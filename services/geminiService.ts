@@ -1,18 +1,12 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-/**
- * 取得 API Key 的輔助函式
- * 在 Vercel 前端環境中，變數通常透過 import.meta.env.VITE_API_KEY 注入
- */
 const getApiKey = () => {
-  // 1. 嘗試從 Vite 規範的 import.meta.env 獲取 (這是 Vercel 前端最常見的方式)
   try {
     const metaEnv = (import.meta as any).env;
     if (metaEnv && metaEnv.VITE_API_KEY) return metaEnv.VITE_API_KEY;
   } catch (e) {}
 
-  // 2. 嘗試從 window.process.env 獲取
   if (typeof process !== 'undefined' && process.env) {
     const env = process.env as any;
     return env.API_KEY || env.VITE_API_KEY || env.NEXT_PUBLIC_API_KEY || null;
@@ -23,36 +17,43 @@ const getApiKey = () => {
 
 const getAIInstance = () => {
   const apiKey = getApiKey();
-  
   if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
     const errorMsg = "偵測不到 API Key。請確保已在 Vercel 設定 VITE_API_KEY 並執行 Redeploy。";
-    console.error("Auth Error:", errorMsg);
     throw new Error(errorMsg);
   }
-
-  // 依照 SDK 規範初始化
   return new GoogleGenAI({ apiKey });
 };
 
-export const performOCR = async (base64Image: string) => {
+/**
+ * 執行 OCR 與文件分析
+ * @param content 可以是 base64 字串 (圖片/PDF) 或者是 提取出來的文字 (Word/Excel)
+ * @param mimeType 內容的 MIME 類型，如果是純文字則為 'text/plain'
+ */
+export const performOCR = async (content: string, mimeType: string = 'image/jpeg') => {
   try {
     const ai = getAIInstance();
     const model = 'gemini-3-flash-preview';
     
     const prompt = `
-      請從這張「新進員工基本資料」表格中提取所有資訊。
-      這是一張繁體中文表單。請精確提取每個欄位的值，包括基本資料、聯絡資訊、緊急聯絡人、學歷、工作經歷以及人事單位的資料。
-      請以繁體中文回傳 JSON 格式。
+      請從這份文件（可能是圖片、PDF、Excel 內容或 Word 內容）中提取「新進員工基本資料」。
+      這是一份繁體中文表單。請精確提取每個欄位的值。
+      請注意：如果文件中包含表格，請將其對應到 JSON 結構中的 education (學歷) 與 employment (工作經歷) 陣列中。
+      請務必以繁體中文回傳 JSON 格式。
     `;
+
+    let parts: any[] = [];
+    if (mimeType === 'text/plain') {
+      parts = [{ text: prompt }, { text: content }];
+    } else {
+      parts = [
+        { inlineData: { mimeType: mimeType, data: content } },
+        { text: prompt }
+      ];
+    }
 
     const response = await ai.models.generateContent({
       model,
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-          { text: prompt }
-        ]
-      },
+      contents: { parts },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -116,7 +117,7 @@ export const performOCR = async (base64Image: string) => {
 
     return JSON.parse(response.text || '{}');
   } catch (e: any) {
-    throw new Error(e.message || "辨識失敗");
+    throw new Error(e.message || "文件辨識分析失敗");
   }
 };
 
