@@ -8,7 +8,6 @@ interface PrintTemplateProps {
 }
 
 const PrintTemplate: React.FC<PrintTemplateProps> = ({ employee, onClose }) => {
-  // 輔助函式：模擬打勾
   const Checkbox = ({ checked }: { checked: boolean }) => (
     <span className="inline-block w-4 h-4 border border-slate-900 mr-1 text-center leading-3 font-bold">
       {checked ? 'v' : ''}
@@ -16,32 +15,38 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ employee, onClose }) => {
   );
 
   const handlePrint = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (e) {
+      alert("瀏覽器封鎖了列印視窗，請嘗試按下 Ctrl + P 進行列印。");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-10 no-print">
-      {/* 預覽控制列 - 僅在螢幕顯示，不列印 */}
-      <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+    <div className="min-h-screen bg-slate-100 py-10 print:bg-white print:py-0">
+      {/* 預覽控制列 - 在列印時必須隱藏 */}
+      <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 no-print">
         <div className="flex items-center space-x-4">
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
             <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </button>
           <div>
-            <h3 className="font-bold text-slate-800">列印預覽：{employee.name}</h3>
-            <p className="text-xs text-slate-500">提示：如果點擊列印沒反應，請按 Ctrl + P</p>
+            <h3 className="font-bold text-slate-800">列印預覽模式</h3>
+            <p className="text-xs text-slate-500">請確認內容無誤後點擊右側按鈕</p>
           </div>
         </div>
-        <button 
-          onClick={handlePrint}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
-        >
-          確認列印
-        </button>
+        <div className="flex space-x-3">
+           <button 
+            onClick={handlePrint}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
+          >
+            立即列印
+          </button>
+        </div>
       </div>
 
-      {/* 實際列印模板 */}
-      <div className="print-template p-[15mm] bg-white text-slate-900 text-[12px] leading-tight w-[210mm] min-h-[297mm] mx-auto shadow-2xl print:shadow-none print:m-0 print:p-[10mm] print:w-full">
+      {/* 實際列印模板 - 確保此容器在列印時不被隱藏 */}
+      <div className="print-content bg-white text-slate-900 text-[12px] leading-tight w-[210mm] min-h-[297mm] mx-auto p-[15mm] shadow-2xl print:shadow-none print:m-0 print:p-[10mm] print:w-full">
         <div className="text-center mb-4 relative">
           <h1 className="text-2xl font-bold tracking-widest underline underline-offset-8">新進員工基本資料</h1>
           <div className="absolute right-0 bottom-0 text-sm">
@@ -118,7 +123,7 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ employee, onClose }) => {
           </tbody>
         </table>
 
-        <div className="text-center font-bold bg-slate-100 border-x-2 border-slate-900 py-1">學 歷</div>
+        <div className="text-center font-bold bg-slate-100 border-x-2 border-slate-900 py-1 mt-0">學 歷</div>
         <table className="w-full border-collapse border-x-2 border-b-2 border-slate-900 text-center">
           <thead>
             <tr className="bg-slate-50">
@@ -216,15 +221,17 @@ const PrintTemplate: React.FC<PrintTemplateProps> = ({ employee, onClose }) => {
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { background: white !important; }
-          .print-template { 
+          body { background: white !important; margin: 0; padding: 0; }
+          .print-content { 
             position: absolute; 
             left: 0; 
             top: 0; 
             width: 210mm;
             box-shadow: none !important;
             margin: 0 !important;
+            padding: 10mm !important;
             border: none !important;
+            visibility: visible !important;
           }
           @page { size: A4; margin: 0; }
         }
