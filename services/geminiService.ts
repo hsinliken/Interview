@@ -1,30 +1,33 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// 封裝初始化邏輯，確保安全性
+// 強健的 API Key 獲取器
+const getApiKey = () => {
+  // 優先從標準 process.env 獲取，其次嘗試常見的前端框架前綴
+  const key = process.env.API_KEY || (process.env as any).VITE_API_KEY || (process.env as any).NEXT_PUBLIC_API_KEY;
+  return key && key.trim() !== "" ? key : null;
+};
+
 const getAIInstance = () => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = getApiKey();
   if (!apiKey) {
-    console.warn("警告: 找不到 process.env.API_KEY。AI 功能將無法運作。");
-    return null;
+    console.error("Gemini SDK 初始化失敗: 找不到 API_KEY。請確保環境變數已正確設定。");
+    throw new Error("API_KEY_MISSING");
   }
   return new GoogleGenAI({ apiKey });
 };
 
 export const performOCR = async (base64Image: string) => {
-  const ai = getAIInstance();
-  if (!ai) return null;
-
-  const model = 'gemini-3-flash-preview';
-  
-  const prompt = `
-    請從這張「新進員工基本資料」表格中提取所有資訊。
-    這是一張繁體中文表單。請精確提取每個欄位的值，包括基本資料、聯絡資訊、緊急聯絡人、學歷、工作經歷以及人事單位的資料。
-    如果欄位有勾選或標記，請提取該選項文字。
-    請以 JSON 格式回傳，並符合指定的 Schema。
-  `;
-
   try {
+    const ai = getAIInstance();
+    const model = 'gemini-3-flash-preview';
+    
+    const prompt = `
+      請從這張「新進員工基本資料」表格中提取所有資訊。
+      這是一張繁體中文表單。請精確提取每個欄位的值，包括基本資料、聯絡資訊、緊急聯絡人、學歷、工作經歷以及人事單位的資料。
+      請以繁體中文回傳 JSON 格式。
+    `;
+
     const response = await ai.models.generateContent({
       model,
       contents: {
@@ -38,26 +41,26 @@ export const performOCR = async (base64Image: string) => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            name: { type: Type.STRING, description: "姓名" },
-            idNumber: { type: Type.STRING, description: "身分證字號" },
-            birthday: { type: Type.STRING, description: "出生日期" },
-            gender: { type: Type.STRING, description: "性別" },
-            bloodType: { type: Type.STRING, description: "血型" },
-            marriage: { type: Type.STRING, description: "婚姻" },
-            military: { type: Type.STRING, description: "役別" },
-            license: { type: Type.STRING, description: "持有駕照" },
-            transportation: { type: Type.STRING, description: "交通工具" },
-            height: { type: Type.STRING, description: "身高" },
-            weight: { type: Type.STRING, description: "體重" },
-            phone: { type: Type.STRING, description: "聯絡電話" },
-            mobile: { type: Type.STRING, description: "行動電話" },
-            email: { type: Type.STRING, description: "電子郵件" },
-            contactAddress: { type: Type.STRING, description: "聯絡地址" },
-            residentAddress: { type: Type.STRING, description: "戶籍地址" },
-            emergencyName: { type: Type.STRING, description: "緊急聯絡人姓名" },
-            emergencyRelation: { type: Type.STRING, description: "緊急聯絡人關係" },
-            emergencyPhone: { type: Type.STRING, description: "緊急聯絡人電話" },
-            emergencyMobile: { type: Type.STRING, description: "緊急聯絡人行動電話" },
+            name: { type: Type.STRING },
+            idNumber: { type: Type.STRING },
+            birthday: { type: Type.STRING },
+            gender: { type: Type.STRING },
+            bloodType: { type: Type.STRING },
+            marriage: { type: Type.STRING },
+            military: { type: Type.STRING },
+            license: { type: Type.STRING },
+            transportation: { type: Type.STRING },
+            height: { type: Type.STRING },
+            weight: { type: Type.STRING },
+            phone: { type: Type.STRING },
+            mobile: { type: Type.STRING },
+            email: { type: Type.STRING },
+            contactAddress: { type: Type.STRING },
+            residentAddress: { type: Type.STRING },
+            emergencyName: { type: Type.STRING },
+            emergencyRelation: { type: Type.STRING },
+            emergencyPhone: { type: Type.STRING },
+            emergencyMobile: { type: Type.STRING },
             education: {
               type: Type.ARRAY,
               items: {
@@ -83,48 +86,48 @@ export const performOCR = async (base64Image: string) => {
                 }
               }
             },
-            employeeNumber: { type: Type.STRING, description: "員工編號" },
-            position: { type: Type.STRING, description: "職稱" },
-            department: { type: Type.STRING, description: "所屬部門" },
-            onboardingDate: { type: Type.STRING, description: "到職日" },
-            insuranceDate: { type: Type.STRING, description: "勞健保加保日" },
-            salary: { type: Type.STRING, description: "基本薪資" }
+            employeeNumber: { type: Type.STRING },
+            position: { type: Type.STRING },
+            department: { type: Type.STRING },
+            onboardingDate: { type: Type.STRING },
+            insuranceDate: { type: Type.STRING },
+            salary: { type: Type.STRING }
           }
         }
       }
     });
 
     return JSON.parse(response.text || '{}');
-  } catch (e) {
-    console.error("Failed to perform OCR", e);
-    return null;
+  } catch (e: any) {
+    if (e.message === "API_KEY_MISSING") {
+      throw new Error("偵測不到 API Key。Vercel 用戶請確保在後台設定 API_KEY 並考慮前綴（如 VITE_API_KEY）。");
+    }
+    throw new Error(`辨識失敗: ${e.message}`);
   }
 };
 
 export const queryHRAIData = async (query: string, data: any[]) => {
-  const ai = getAIInstance();
-  if (!ai) return "AI 服務暫時無法使用，請檢查 API Key 設定。";
-
-  const model = 'gemini-3-flash-preview';
-  const dataContext = JSON.stringify(data.slice(0, 50));
-
   try {
+    const ai = getAIInstance();
+    const model = 'gemini-3-flash-preview';
+    const dataContext = JSON.stringify(data.slice(0, 50));
+
     const response = await ai.models.generateContent({
       model,
       contents: `
         你是一位專業的 HR 數據分析師。請使用繁體中文回答。
         以下是新進員工的 JSON 資料集：
         ${dataContext}
-
+        
         使用者問題： "${query}"
-
-        請僅根據提供的資料提供簡潔、專業的分析。如果資料中沒有答案，請如實告知。
       `,
     });
 
     return response.text;
-  } catch (e) {
-    console.error("AI Analysis failed", e);
-    return "分析過程發生錯誤。";
+  } catch (e: any) {
+    if (e.message === "API_KEY_MISSING") {
+      return "錯誤：找不到 API Key。請在 Vercel 設定中將環境變數命名為 VITE_API_KEY。";
+    }
+    return `分析失敗：${e.message}`;
   }
 };

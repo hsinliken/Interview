@@ -5,12 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemini HR Onboarding Hub</title>
-    <!-- 使用 SVG 作為 Favicon 避免 404 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     
-    <!-- 防止 process is not defined 錯誤 -->
     <script>
-        window.process = window.process || { env: { API_KEY: "" } };
+        // 全域環境變數相容性墊片
+        window.process = window.process || { env: {} };
+        // 嘗試從常見的前端注入點補捉 API Key
+        window.process.env.API_KEY = window.process.env.API_KEY || window.process.env.VITE_API_KEY || window.process.env.NEXT_PUBLIC_API_KEY || "";
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,9 +19,8 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                 }
             }
         }
@@ -42,7 +42,7 @@
     }
     </script>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-50 text-slate-900 antialiased">
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
 </body>
