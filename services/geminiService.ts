@@ -1,19 +1,36 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// 強健的 API Key 獲取器
+/**
+ * 取得 API Key 的輔助函式
+ * 在 Vercel 前端環境中，變數通常透過 import.meta.env.VITE_API_KEY 注入
+ */
 const getApiKey = () => {
-  // 優先從標準 process.env 獲取，其次嘗試常見的前端框架前綴
-  const key = process.env.API_KEY || (process.env as any).VITE_API_KEY || (process.env as any).NEXT_PUBLIC_API_KEY;
-  return key && key.trim() !== "" ? key : null;
+  // 1. 嘗試從 Vite 規範的 import.meta.env 獲取 (這是 Vercel 前端最常見的方式)
+  try {
+    const metaEnv = (import.meta as any).env;
+    if (metaEnv && metaEnv.VITE_API_KEY) return metaEnv.VITE_API_KEY;
+  } catch (e) {}
+
+  // 2. 嘗試從 window.process.env 獲取
+  if (typeof process !== 'undefined' && process.env) {
+    const env = process.env as any;
+    return env.API_KEY || env.VITE_API_KEY || env.NEXT_PUBLIC_API_KEY || null;
+  }
+
+  return null;
 };
 
 const getAIInstance = () => {
   const apiKey = getApiKey();
-  if (!apiKey) {
-    console.error("Gemini SDK 初始化失敗: 找不到 API_KEY。請確保環境變數已正確設定。");
-    throw new Error("API_KEY_MISSING");
+  
+  if (!apiKey || apiKey === "undefined" || apiKey.trim() === "") {
+    const errorMsg = "偵測不到 API Key。請確保已在 Vercel 設定 VITE_API_KEY 並執行 Redeploy。";
+    console.error("Auth Error:", errorMsg);
+    throw new Error(errorMsg);
   }
+
+  // 依照 SDK 規範初始化
   return new GoogleGenAI({ apiKey });
 };
 
@@ -99,10 +116,7 @@ export const performOCR = async (base64Image: string) => {
 
     return JSON.parse(response.text || '{}');
   } catch (e: any) {
-    if (e.message === "API_KEY_MISSING") {
-      throw new Error("偵測不到 API Key。Vercel 用戶請確保在後台設定 API_KEY 並考慮前綴（如 VITE_API_KEY）。");
-    }
-    throw new Error(`辨識失敗: ${e.message}`);
+    throw new Error(e.message || "辨識失敗");
   }
 };
 
@@ -125,9 +139,6 @@ export const queryHRAIData = async (query: string, data: any[]) => {
 
     return response.text;
   } catch (e: any) {
-    if (e.message === "API_KEY_MISSING") {
-      return "錯誤：找不到 API Key。請在 Vercel 設定中將環境變數命名為 VITE_API_KEY。";
-    }
     return `分析失敗：${e.message}`;
   }
 };

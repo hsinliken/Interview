@@ -8,10 +8,11 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     
     <script>
-        // 全域環境變數相容性墊片
+        // 建立 process.env 墊片，防止 SDK 在找不到 process 時報錯
         window.process = window.process || { env: {} };
-        // 嘗試從常見的前端注入點補捉 API Key
-        window.process.env.API_KEY = window.process.env.API_KEY || window.process.env.VITE_API_KEY || window.process.env.NEXT_PUBLIC_API_KEY || "";
+        window.process.env = window.process.env || {};
+        
+        console.log("System: Gemini HR Hub 正在初始化系統環境...");
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
