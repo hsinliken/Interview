@@ -1,0 +1,7 @@
+{
+  "name": "Gemini HR Onboarding Hub",
+  "description": "An automated HR data center for new employee onboarding, featuring AI-powered document OCR, data analytics, and standardized document generation using Gemini.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
